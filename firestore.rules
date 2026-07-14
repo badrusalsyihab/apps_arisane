@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.platformRole == 'admin';
+    }
+
+    // Cek keanggotaan lewat get() langsung (bukan query) -- makanya ID dokumen
+    // group_members WAJIB deterministik: "{groupId}_{userId}" (lihat FirestoreService).
+    function membershipDoc(groupId) {
+      return get(/databases/$(database)/documents/group_members/$(groupId + '_' + request.auth.uid));
+    }
+
+    function isActiveMember(groupId) {
+      let m = membershipDoc(groupId);
+      return m.data.status == 'aktif';
+    }
+
+    function hasRole(groupId, role) {
+      let m = membershipDoc(groupId);
+      return m.data.status == 'aktif' && m.data.role == role;
+    }
+
+    // ---------- USERS ----------
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---------- ARISAN_GROUPS ----------
+    match /arisan_groups/{groupId} {
+      allow read: if isSignedIn() && (isActiveMember(groupId) || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (hasRole(groupId, 'ketua') || isAdmin());
+      // Hapus permanen hanya untuk grup draft milik ketua, atau override admin.
+      allow delete: if isSignedIn() &&
+        ((hasRole(groupId, 'ketua') && resource.data.status == 'draft') || isAdmin());
+    }
+
+    // ---------- GROUP_MEMBERS ----------
+    // ID dokumen = "{groupId}_{userId}" (deterministik, lihat catatan di atas).
+    match /group_members/{memberDocId} {
+      allow read: if isSignedIn() && (isActiveMember(resource.data.groupId) || isAdmin());
+      allow create: if isSignedIn() &&
+        (hasRole(request.resource.data.groupId, 'ketua') || isAdmin() ||
+         // izinkan create pertama saat buat grup baru (diri sendiri jadi ketua)
+         request.resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() &&
+        (hasRole(resource.data.groupId, 'ketua') ||
+         request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if isSignedIn() && (hasRole(resource.data.groupId, 'ketua') || isAdmin());
+    }
+
+    // ---------- ARISAN_ROUNDS ----------
+    match /arisan_rounds/{roundId} {
+      allow read: if isSignedIn() && (isActiveMember(resource.data.groupId) || isAdmin());
+      allow create: if isSignedIn() &&
+        (hasRole(request.resource.data.groupId, 'ketua') || isAdmin());
+      allow update: if isSignedIn() &&
+        (hasRole(resource.data.groupId, 'ketua') || isAdmin());
+    }
+
+    // ---------- ARISAN_TRANSACTIONS ----------
+    // Catatan: collection ini tidak simpan groupId langsung (hanya roundId),
+    // jadi rule di sini masih longgar (level UI yang jaga siapa boleh apa).
+    // Untuk validasi ketat di level database, tambahkan Cloud Function
+    // onWrite trigger yang cek role sekretaris lewat lookup roundId->groupId.
+    match /arisan_transactions/{txId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    // ---------- KAS_TRANSACTIONS ----------
+    match /kas_transactions/{txId} {
+      allow read: if isSignedIn() && (isActiveMember(resource.data.groupId) || isAdmin());
+      allow create: if isSignedIn() &&
+        (hasRole(request.resource.data.groupId, 'sekretaris') ||
+         hasRole(request.resource.data.groupId, 'ketua') || isAdmin());
+      allow update, delete: if isSignedIn() &&
+        (hasRole(resource.data.groupId, 'sekretaris') ||
+         hasRole(resource.data.groupId, 'ketua') || isAdmin());
+    }
+
+    // ---------- NOTIFICATIONS ----------
+    match /notifications/{notifId} {
+      allow read, update: if isSignedIn() && request.auth.uid == resource.data.userId;
+      // Dibuat oleh sekretaris (manual, lewat client) atau Cloud Function
+      // (pakai Admin SDK, otomatis bypass rules ini sepenuhnya).
+      allow create: if isSignedIn();
+    }
+
+    // ---------- PENDING_INVITES ----------
+    // Undangan untuk email yang belum pernah login. Dibuat oleh Ketua saat
+    // invite, dihapus otomatis (oleh AuthService.resolvePendingInvites) begitu
+    // user dengan email tsb login pertama kali.
+    match /pending_invites/{inviteId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        (hasRole(request.resource.data.groupId, 'ketua') || isAdmin());
+      allow delete: if isSignedIn() &&
+        (hasRole(resource.data.groupId, 'ketua') || isAdmin() ||
+         request.auth.token.email == resource.data.email);
+    }
+  }
+}
