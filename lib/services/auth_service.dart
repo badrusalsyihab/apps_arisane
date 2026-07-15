@@ -1,13 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firestore_service.dart';
 
 // Login pakai akun Google, sekaligus dipakai sebagai token akses
 // ke Google Drive API (scope drive.file) untuk upload bukti transfer/foto grup.
+// Web: pakai signInWithPopup (tidak butuh clientId).
+// Mobile: pakai google_sign_in (butuh untuk Drive API access).
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Hanya dipakai di mobile — Drive upload tidak support web (dart:io).
   static final GoogleSignIn googleSignIn = GoogleSignIn(
     scopes: [
       'email',
@@ -19,20 +23,27 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<User?> signInWithGoogle() async {
-    final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) return null; // user batal login
+    User? user;
 
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+    if (kIsWeb) {
+      final provider = GoogleAuthProvider()
+        ..addScope('email');
+      final result = await _auth.signInWithPopup(provider);
+      user = result.user;
+    } else {
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return null;
 
-    final result = await _auth.signInWithCredential(credential);
-    final user = result.user;
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final result = await _auth.signInWithCredential(credential);
+      user = result.user;
+    }
 
     if (user != null) {
-      // Buat/update dokumen user di Firestore kalau baru pertama login
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': user.displayName ?? '',
         'email': user.email ?? '',
@@ -40,8 +51,6 @@ class AuthService {
         'platformRole': 'user',
       }, SetOptions(merge: true));
 
-      // Cek apakah email ini punya undangan tertunda (di-invite sebelum
-      // pernah login) -> otomatis masuk ke grup yang mengundangnya.
       await FirestoreService().resolvePendingInvites(
         user.uid,
         user.displayName ?? user.email ?? '',
@@ -52,7 +61,7 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await googleSignIn.signOut();
+    if (!kIsWeb) await googleSignIn.signOut();
     await _auth.signOut();
   }
 }

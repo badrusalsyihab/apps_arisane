@@ -1,1 +1,33 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"flutter-arisan-app","appId":"1:983858227612:android:8ea1d1a6eacee3df638059","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"flutter-arisan-app","configurations":{"android":"1:983858227612:android:8ea1d1a6eacee3df638059","ios":"1:983858227612:ios:f0ec07969e60b2e1638059","macos":"1:983858227612:ios:f0ec07969e60b2e1638059","web":"1:983858227612:web:f20a4bebd9985ab8638059","windows":"1:983858227612:web:8e85fdf32f9b18ad638059"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "flutter-arisan-app",
+          "appId": "1:983858227612:android:8ea1d1a6eacee3df638059",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "flutter-arisan-app",
+          "configurations": {
+            "android": "1:983858227612:android:8ea1d1a6eacee3df638059",
+            "ios": "1:983858227612:ios:f0ec07969e60b2e1638059",
+            "macos": "1:983858227612:ios:f0ec07969e60b2e1638059",
+            "web": "1:983858227612:web:f20a4bebd9985ab8638059",
+            "windows": "1:983858227612:web:8e85fdf32f9b18ad638059"
+          }
+        }
+      }
+    }
+  }
+}

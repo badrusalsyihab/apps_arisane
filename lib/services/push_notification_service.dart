@@ -8,16 +8,25 @@ class PushNotificationService {
   final _messaging = FirebaseMessaging.instance;
 
   Future<void> initAndSaveToken(String userId) async {
-    // Minta izin notifikasi (wajib di iOS, opsional tapi disarankan di Android 13+/web).
-    await _messaging.requestPermission(alert: true, badge: true, sound: true);
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true, badge: true, sound: true,
+      );
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        return; // user menolak notifikasi — tidak crash, cukup skip
+      }
 
-    final token = await _messaging.getToken();
-    if (token != null) {
-      await _saveToken(userId, token);
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _saveToken(userId, token);
+      }
+
+      // Token bisa berubah (reinstall app, dsb) -> selalu update kalau berubah.
+      _messaging.onTokenRefresh.listen((newToken) => _saveToken(userId, newToken));
+    } catch (_) {
+      // Permission blocked atau FCM tidak tersedia di platform ini — abaikan.
     }
-
-    // Token bisa berubah (reinstall app, dsb) -> selalu update kalau berubah.
-    _messaging.onTokenRefresh.listen((newToken) => _saveToken(userId, newToken));
   }
 
   Future<void> _saveToken(String userId, String token) {
