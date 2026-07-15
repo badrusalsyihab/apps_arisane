@@ -36,7 +36,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _period,
+            initialValue: _period,
             decoration: const InputDecoration(labelText: 'Periode'),
             items: const [
               DropdownMenuItem(value: 'mingguan', child: Text('Mingguan')),

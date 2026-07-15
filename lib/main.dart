@@ -5,13 +5,11 @@ import 'services/auth_service.dart';
 import 'services/push_notification_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Jalankan `flutterfire configure` dulu -> ini generate firebase_options.dart
-  // Lalu uncomment baris di bawah dan import 'firebase_options.dart'.
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ArisanApp());
 }
 
