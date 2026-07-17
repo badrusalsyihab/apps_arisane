@@ -3,8 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/auth_service.dart';
 import 'services/push_notification_service.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_shell.dart';
 import 'screens/admin_dashboard_screen.dart';
+import 'screens/login_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -40,15 +41,7 @@ class _AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         final user = snapshot.data;
         if (user == null) {
-          return Scaffold(
-            body: Center(
-              child: FilledButton.icon(
-                icon: const Icon(Icons.login),
-                label: const Text('Masuk dengan Google'),
-                onPressed: () => auth.signInWithGoogle(),
-              ),
-            ),
-          );
+          return LoginScreen(onSignIn: auth.signInWithGoogle);
         }
         // Simpan/refresh device token FCM begitu user terdeteksi login,
         // supaya Cloud Function bisa kirim push notification asli ke device ini.
@@ -68,7 +61,7 @@ class _AuthGate extends StatelessWidget {
             if (platformRole == 'admin') {
               return const AdminDashboardScreen();
             }
-            return DashboardScreen(userId: user.uid);
+            return HomeShell(userId: user.uid);
           },
         );
       },

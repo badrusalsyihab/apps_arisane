@@ -14,7 +14,7 @@ class NotificationsScreen extends StatelessWidget {
     final firestore = FirestoreService();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifikasi')),
+      backgroundColor: const Color(0xFFF0F2F5),
       body: StreamBuilder<List<AppNotification>>(
         stream: firestore.myNotifications(userId),
         builder: (context, snapshot) {
