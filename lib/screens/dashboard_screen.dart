@@ -42,6 +42,9 @@ class DashboardScreen extends StatelessWidget {
       body: StreamBuilder<List<ArisanGroup>>(
         stream: firestore.myGroups(userId),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }

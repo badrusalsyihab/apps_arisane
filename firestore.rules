@@ -46,7 +46,12 @@ service cloud.firestore {
     // ---------- GROUP_MEMBERS ----------
     // ID dokumen = "{groupId}_{userId}" (deterministik, lihat catatan di atas).
     match /group_members/{memberDocId} {
-      allow read: if isSignedIn() && (isActiveMember(resource.data.groupId) || isAdmin());
+      // User boleh baca dokumen keanggotaan miliknya sendiri (untuk query myGroups)
+      // atau dokumen anggota lain di grup yang dia ikuti.
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.userId ||
+         isActiveMember(resource.data.groupId) ||
+         isAdmin());
       allow create: if isSignedIn() &&
         (hasRole(request.resource.data.groupId, 'ketua') || isAdmin() ||
          // izinkan create pertama saat buat grup baru (diri sendiri jadi ketua)
